@@ -7,6 +7,26 @@
 const SERVICE = 'echo-fleet-commander';
 const VERSION = '1.2.0';
 
+// Constant-time string comparison — runtime must not depend on where (or
+// whether) the inputs first differ, including a length mismatch, or an
+// attacker can recover the key length/prefix via timing.
+export function timingSafeEqual(a: string | undefined | null, b: string | undefined | null): boolean {
+  if (!a || !b) return false;
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+  const len = Math.max(bufA.length, bufB.length, 1);
+  const padA = new Uint8Array(len);
+  const padB = new Uint8Array(len);
+  padA.set(bufA);
+  padB.set(bufB);
+  let mismatch = bufA.length ^ bufB.length;
+  for (let i = 0; i < len; i++) {
+    mismatch |= padA[i] ^ padB[i];
+  }
+  return mismatch === 0;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1876,7 +1896,7 @@ async function buildDashboard(env: Env): Promise<Record<string, any>> {
 // HTTP REQUEST HANDLER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-async function handleRequest(request: Request, env: Env): Promise<Response> {
+export async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
 
@@ -1891,10 +1911,16 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     });
   }
 
-  // Auth check (except health)
+  // Auth check (except health). Fail-closed: an unconfigured ECHO_API_KEY
+  // must never mean "no restriction" — previously `env.ECHO_API_KEY &&
+  // apiKey !== env.ECHO_API_KEY` short-circuited to false (open) whenever
+  // the secret was unset, letting any request through with no key at all.
   if (path !== '/health' && path !== '/') {
+    if (!env.ECHO_API_KEY) {
+      return json({ error: 'Service misconfigured: ECHO_API_KEY not set' }, 503);
+    }
     const apiKey = request.headers.get('X-Echo-API-Key');
-    if (env.ECHO_API_KEY && apiKey !== env.ECHO_API_KEY) {
+    if (!timingSafeEqual(apiKey, env.ECHO_API_KEY)) {
       return json({ error: 'Unauthorized' }, 401);
     }
   }
