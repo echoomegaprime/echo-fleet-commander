@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily gs343 heal digest (09:00 CT)
+
+[Timer]
+OnCalendar=*-*-* 09:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
