@@ -1,0 +1,13 @@
+[Unit]
+Description=gs343 daily autoheal digest to Commander Telegram
+After=network.target
+Documentation=https://github.com/echoomegaprime/echo-fleet-commander/blob/main/docs/rnd-26-timeout-startsec.md
+
+[Service]
+Type=oneshot
+User=forge
+ExecStart=/usr/bin/python3 /home/forge/gs343_daily_digest.py
+# rnd-26 / ECHO R&D proposal #26: raise start budget so digest generation +
+# Telegram delivery are not SIGTERM'd by systemd's default TimeoutStartSec (~90s).
+TimeoutStartSec=120
+TimeoutStopSec=30

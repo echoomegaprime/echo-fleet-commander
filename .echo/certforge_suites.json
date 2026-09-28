@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "suites": [
+    {
+      "path": "tests/python/test_gs343_digest_timeout.py",
+      "sys_paths": ["python"]
+    }
+  ]
+}
